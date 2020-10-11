@@ -71,7 +71,7 @@ const teams = [
 ];
 
 //indicates for each match number what position they are playing for
-let matches = [
+const matches = [
   {
       resultPlace:"semi1",
       player1: "seed1",
@@ -110,11 +110,6 @@ let matches = [
 ]
 
 
-// we could place this Todo component in a separate file, but it's
-// small enough to alternatively just include it in our App.js file.
-
-
-
 // main component
 class App extends React.Component {
   constructor( props ) {
@@ -122,60 +117,103 @@ class App extends React.Component {
     // initialize our state
     const queryString = window.location.search;
     const urlParams = new URLSearchParams(queryString);
-    this.state = { pickems:null, username : urlParams.get('username'), hasPickems:false, leftPick:"Team 1", rightPick:"Team 2", matchNum:0}
+    const name = urlParams.get('username')
+    let _loggedIn = false
+    if (name){
+      _loggedIn = true
+    }
+
+    let temp =  {
+      "seed1": this.getTeamBySeed(1),
+      "seed2": this.getTeamBySeed(2),
+      "seed3": this.getTeamBySeed(3),
+      "seed4": this.getTeamBySeed(4),
+      "seed5": this.getTeamBySeed(5),
+      "seed6": this.getTeamBySeed(6),
+      "seed7": this.getTeamBySeed(7),
+      "seed8": this.getTeamBySeed(8),
+    }
+
+    this.state = { loggedIn:_loggedIn,
+                   wrongPass: false,
+                   inputUname: "Username",
+                   inputPword: "Password",
+                   pickems:temp, 
+                   username : name, 
+                   hasPickems:false, 
+                   leftPick:"Team 1", 
+                   rightPick:"Team 2", 
+                   matchNum:0,
+                  }
    
     let newUser = urlParams.get('newUser');
 
     if (newUser === "true"){
         alert("An account with that username was not found so one was created")
+        this.init(temp)
     }
-    else {
-        this.fetchAndUpdatePickems();
-    }
+    this.fetchAndUpdatePickems().then(pickems=>this.init(pickems))
+    console.log("here 4")
+    
     // do something to initilize the state (either to empty or the gathered data)
     
-    this.init()
+    
   }
 
   getTeamBySeed(seed){
     return teams[seed-1]
   } 
 
-  getTeamByPlace(place){
-      return this.state.pickems[place];
+  getTeamByPlace(pickems, place){
+      return pickems[place];
   }
 
-  makePick(team, matchNum){
+  makePick(team, _matchNum) {
       let pickemCopy = JSON.parse(JSON.stringify(this.state.pickems))
-      pickemCopy[matches[matchNum].resultPlace] = team; 
-      this.setState({
-        pickems:pickemCopy
-      })
-      if (matchNum < 6) {
-        this.setState({matchNum:matchNum+1})
-        this.initPicks(matchNum+1);
+      let teamObj
+
+      for (let i = 0; i<teams.length; i++) {
+        if (teams[i].shortName === team){
+          teamObj = teams[i]
+          break
+        }
+      }
+
+      pickemCopy[matches[_matchNum].resultPlace] = teamObj; 
+      
+      if (_matchNum < 6) {
+        this.setState({
+          pickems:pickemCopy,
+          matchNum:(_matchNum+1)
+        })
+        this.initPicks(pickemCopy, _matchNum+1);
       }
       else {
-          this.sendPickems()
-          this.setState({hasPickems : true})
+          this.sendPickems(pickemCopy)
+          this.setState({
+            pickems:pickemCopy,
+            hasPickems:true
+          })
       }
   }
 
-  initPicks(matchNum){ 
-      let teamL = this.getTeamByPlace(matches[matchNum].player1);
-      let teamR = this.getTeamByPlace(matches[matchNum].player2);
+  initPicks(pickems, _matchNum){ 
+      console.log("Matchnum is = " + _matchNum)
+      console.log(matches[_matchNum])
+      let teamL = this.getTeamByPlace(pickems, matches[_matchNum].player1);
+      let teamR = this.getTeamByPlace(pickems, matches[_matchNum].player2);
 
       this.setState({ leftPick  : teamL.shortName,
                       rightPick : teamR.shortName  })
         
   }
 
-  sendPickems(){
+  sendPickems(pickem){
     fetch('/add', {
       method:'POST',
       body:JSON.stringify({
           username: this.state.username,
-          pickdata: this.state.pickems
+          pickdata: pickem
       }),
       headers : {
           "Content-Type":"application/json"
@@ -186,8 +224,8 @@ class App extends React.Component {
         })
   }
 
-  fetchAndUpdatePickems(){
-     let json = fetch('/db', {
+  async fetchAndUpdatePickems(){
+      return fetch('/db', {
         method:'POST',
         body:JSON.stringify({
             username: this.state.username
@@ -199,125 +237,207 @@ class App extends React.Component {
           .then( json => {
               // if the pickems in the server is empty then we want to have 
               // an empty default pickems displayed
-              console.log("here 1")
-              return json
+              console.log("here 2")
+              if (json && json.pickem) {
+                this.setState({hasPickems:true, pickems:json.pickem})
+                return json.pickem
+              }   
+              else {
+                let temp =  {
+                  "seed1": this.getTeamBySeed(1),
+                  "seed2": this.getTeamBySeed(2),
+                  "seed3": this.getTeamBySeed(3),
+                  "seed4": this.getTeamBySeed(4),
+                  "seed5": this.getTeamBySeed(5),
+                  "seed6": this.getTeamBySeed(6),
+                  "seed7": this.getTeamBySeed(7),
+                  "seed8": this.getTeamBySeed(8),
+                }
+                this.setState({
+                  hasPickens:false, 
+                  pickems: temp
+                })
+                return temp
+              }
           })
-    console.log("here 2")
-    if (json.pickem) {
-      this.setState({hasPickems:true, pickems:json.pickem})
-        
-    }   
-    else {
-      this.setState({hasPickens:false, 
-        pickems: {
-          "seed1": this.getTeamBySeed(1),
-          "seed2": this.getTeamBySeed(2),
-          "seed3": this.getTeamBySeed(3),
-          "seed4": this.getTeamBySeed(4),
-          "seed5": this.getTeamBySeed(5),
-          "seed6": this.getTeamBySeed(6),
-          "seed7": this.getTeamBySeed(7),
-          "seed8": this.getTeamBySeed(8),
-        }
-      })
-    }
+    
   }
 
   modifyPicks(){
-    this.setState({pickems : {
-        "seed1": this.getTeamBySeed(1),
-        "seed2": this.getTeamBySeed(2),
-        "seed3": this.getTeamBySeed(3),
-        "seed4": this.getTeamBySeed(4),
-        "seed5": this.getTeamBySeed(5),
-        "seed6": this.getTeamBySeed(6),
-        "seed7": this.getTeamBySeed(7),
-        "seed8": this.getTeamBySeed(8),
-      },
+    let temp =  {
+      "seed1": this.getTeamBySeed(1),
+      "seed2": this.getTeamBySeed(2),
+      "seed3": this.getTeamBySeed(3),
+      "seed4": this.getTeamBySeed(4),
+      "seed5": this.getTeamBySeed(5),
+      "seed6": this.getTeamBySeed(6),
+      "seed7": this.getTeamBySeed(7),
+      "seed8": this.getTeamBySeed(8),
+    }
+    this.setState({
+      pickems : temp,
       hasPickems:false
     })
-    this.init();
+    this.setState({matchNum:0})
+    this.initPicks(temp, 0)
   }
 
   async deletePicks(){
-    this.setState({pickems : {
-        "seed1": this.getTeamBySeed(1),
-        "seed2": this.getTeamBySeed(2),
-        "seed3": this.getTeamBySeed(3),
-        "seed4": this.getTeamBySeed(4),
-        "seed5": this.getTeamBySeed(5),
-        "seed6": this.getTeamBySeed(6),
-        "seed7": this.getTeamBySeed(7),
-        "seed8": this.getTeamBySeed(8),
-      },
+    let temp =  {
+      "seed1": this.getTeamBySeed(1),
+      "seed2": this.getTeamBySeed(2),
+      "seed3": this.getTeamBySeed(3),
+      "seed4": this.getTeamBySeed(4),
+      "seed5": this.getTeamBySeed(5),
+      "seed6": this.getTeamBySeed(6),
+      "seed7": this.getTeamBySeed(7),
+      "seed8": this.getTeamBySeed(8),
+    }
+    this.setState({
+      pickems : temp,
       hasPickems:false
     })
     return fetch('/delete', {
         method:'POST',
         body:JSON.stringify({
             username: this.state.username,
-            pickdata: this.state.pickems
+            pickdata: temp
         }),
         headers : {
             "Content-Type":"application/json"
         }
     }).then( response => response.json())
         .then( json => {
-            
-            this.init();
+          this.setState({matchNum:0})
+          this.initPicks(json.pickem, 0)
         })
   }
 
 
-  init(){
+  init(pickems){
     if (!this.state.hasPickems) {
         this.setState({matchNum:0})
-        this.initPicks(0)
+        this.initPicks(pickems, 0)
     }
   }
   
+  verifyUser(_username, _password){
+    fetch('/verify', {
+        method:'POST',
+        body:JSON.stringify({
+            username: _username,
+            password: _password
+        }),
+        headers : {
+            "Content-Type":"application/json"
+        }
+    }).then( response => response.json())
+        .then( json => {
+            console.log(json);
+            let newUrl = "/index.html?username="+json.result.username
+            if (json.responseCode == 0){
+                // created new account
+                window.location.replace(newUrl+"&newUser=true")
+            }
+            else if (json.responseCode == -1){
+                // incorrect username or password
+                document.getElementById("fail").innerHTML
+                     = "Incorrect Username and Password combo";
+            }
+            else if (json.responseCode == 1){
+                // correct user name and password
+                window.location.replace(newUrl+"&newUser=false")
+            }
+        })
+  }
+
+  handleSubmit(){
+    this.verifyUser(this.state.inputUname, this.state.inputPword)
+  }
+
+  handleChangeUname(e){
+    this.setState({inputUname:e.target.value})
+  }
+
+  handleChangePword(e){
+    this.setState({inputPword:e.target.value})
+  }
+
+  handleGithub(){
+    window.location.replace("/auth/github");
+  }
 
   // render component HTML using JSX 
   render() {
     let footer;
-
-    if (this.state.hasPickems){
-      // alt functions footer
-      footer = <div class = "container">
-                    <button id = "modify">Update My Pickems</button>
-                    &nbsp;
-                    <button id = "delete">Delete My Pickems</button>
-                </div>
-      footer.getElementById("modify").onclick = function(){
-        this.modifyPicks();
-      }
-      footer.getElementById("delete").onclick = async function(){
-        this.deletePicks();
-      }
+    if (!this.state.loggedIn){
+      return (
+        <div class = "container">
+          <h1>Login for 2020 LoL Worlds Pickems</h1>
+        
+          <form>
+            <input type='text' id='username' value={this.state.inputUname} onChange={(e)=>{this.handleChangeUname(e)}}/>
+          </form>
+          <form>
+            <input type='text' id='password' value={this.state.inputPword} onChange={(e)=>{this.handleChangePword(e)}}/>
+          </form>
+          <p id = "fail"></p>
+          <button onClick={()=>this.handleSubmit()}>Submit</button>
+          <button onClick={()=>this.handleGithub()}>Login with Github</button>
+        </div>
+      )
     }
     else {
-      // picker footer
-      footer = <div class = "container">
-                  <p>Who will win?</p>
-                  <button id = "team1">Test1</button>
-                  <span>vs.</span>
-                  <button id = "team2">Test2</button>
-                </div>
+      if (this.state.hasPickems){
+        // alt functions footer
 
-      footer.getElementById("team1").onclick = function(){
-          this.makePick(this.state.leftPick, this.state.matchNum);
+        let mBut = <button 
+                      onClick = {()=>this.modifyPicks()}>
+                      Update My Pickems
+                    </button>
+        let dBut = <button id = "delete"
+                      onClick = {()=>this.deletePicks()}>
+                      Delete My Pickems
+                    </button>
+
+        footer = <div class = "container">
+                      {mBut}
+                      &nbsp;
+                      {dBut}
+                  </div>
       }
-      footer.getElementById("team2").onclick = function(){
-          this.makePick(this.state.rightPick, this.state.matchNum);
+      else {
+        // picker footer'
+        console.log("here 0 team 1 is = " + this.state.leftPick)
+        console.log("setting buttons match num: " + this.state.matchNum.valueOf())
+        //let tempThis = this
+        // let tempLeftPick  = this.state.leftPick
+        // let tempRightPick = this.state.rightPick
+        // let tempMatchNum  = this.state.matchNum.valueOf()
+        let lBut = <button 
+                      onClick={() => this.makePick(this.state.leftPick, this.state.matchNum)}>
+                        {this.state.leftPick}
+                    </button>
+
+        let rBut = <button 
+                      onClick={() => this.makePick(this.state.rightPick, this.state.matchNum)}>
+                        {this.state.rightPick}
+                    </button>
+        footer = <div class = "container">
+                    <p>Who will win?</p>
+                    {lBut}
+                    <span>vs.</span>
+                    {rBut}
+                  </div>
       }
+
+      return (
+        <div className="App">
+          <Pickem data={this.state.pickems} />
+          {footer}
+        </div>
+      )
     }
-
-    return (
-      <div className="App">
-        <Pickem data = {this.state.pickems} />
-        {footer}
-      </div>
-    )
   }
 }
 
