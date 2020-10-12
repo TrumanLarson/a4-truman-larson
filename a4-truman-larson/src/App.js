@@ -341,8 +341,7 @@ class App extends React.Component {
             }
             else if (json.responseCode == -1){
                 // incorrect username or password
-                document.getElementById("fail").innerHTML
-                     = "Incorrect Username and Password combo";
+                this.setState({wrongPass:true})
             }
             else if (json.responseCode == 1){
                 // correct user name and password
@@ -371,17 +370,22 @@ class App extends React.Component {
   render() {
     let footer;
     if (!this.state.loggedIn){
+      let wrongPassText = ""
+      if (this.state.wrongPass){
+        wrongPassText = "Incorrect username and password combo"
+      }
+
       return (
         <div class = "container">
           <h1>Login for 2020 LoL Worlds Pickems</h1>
         
           <form>
-            <input type='text' id='username' value={this.state.inputUname} onChange={(e)=>{this.handleChangeUname(e)}}/>
+            <input type='text' value={this.state.inputUname} onChange={(e)=>{this.handleChangeUname(e)}}/>
           </form>
           <form>
-            <input type='text' id='password' value={this.state.inputPword} onChange={(e)=>{this.handleChangePword(e)}}/>
+            <input type='text' value={this.state.inputPword} onChange={(e)=>{this.handleChangePword(e)}}/>
           </form>
-          <p id = "fail"></p>
+          <p>{wrongPassText}</p>
           <button onClick={()=>this.handleSubmit()}>Submit</button>
           <button onClick={()=>this.handleGithub()}>Login with Github</button>
         </div>

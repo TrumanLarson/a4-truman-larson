@@ -16,13 +16,13 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const MongoClient = mongodb.MongoClient;
-app     = express()
+let app     = express()
 
 app.use(passport.initialize())
 passport.use(new GitHubStrategy({
     clientID: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    callbackURL: `https://a3-truman-larson.herokuapp.com/auth/github/callback`
+    callbackURL: `https://a4-truman-larson.glitch.me/auth/github/callback`
   },
   function(accessToken, refreshToken, profile, cb) {
     return cb(null, {profile})
@@ -52,13 +52,13 @@ app.get('/auth/github/callback',
         let newUser = "false"
         if (result != null){
             res.redirect(
-                `/views/index.html?username=${req.user.profile.username}&newUser=${newUser}`)
+                `/index.html?username=${req.user.profile.username}&newUser=${newUser}`)
         } 
         else {
             newUser = "true"
             collection.insertOne({username:req.user.profile.username}).then(() => {
                 res.redirect(
-                    `/views/index.html?username=${req.user.profile.username}&newUser=${newUser}`)
+                    `/index.html?username=${req.user.profile.username}&newUser=${newUser}`)
             })
         }
     })
@@ -87,7 +87,7 @@ client.connect(err => {
 app.use( express.static('./build'))
 
 app.get( "/", (request, response) => {
-    response.sendFile(__dirname + "/views/login.html")
+    response.sendFile(__dirname + "/build/index.html")
 })
 
 app.post( "/db", bodyParser.json(), (request, response) => {
